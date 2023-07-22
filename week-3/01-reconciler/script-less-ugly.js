@@ -51,15 +51,15 @@ function createDomElements(data) {
     parentElement.removeChild(child);
   });
 
-  console.log(added);
-  console.log(updated);
-  console.log(deleted);
+  console.log("Added: ", added);
+  console.log("Updated: ", updated);
+  console.log("Deleted: ", deleted);
 }
 
 
-window.setInterval(() => {
+/* window.setInterval(() => {
   let todos = [];
-  for (let i = 0; i<Math.floor(Math.random() * 100); i++) {
+  for (let i = 0; i<Math.floor(Math.random() * 20); i++) {
     todos.push({
       title: "Go to gym",
       description: "Go to gym form 5",
@@ -68,4 +68,15 @@ window.setInterval(() => {
   }
 
   createDomElements(todos)
-}, 5000)
+}, 10000); */
+
+let todos = [];
+for (let i = 0; i < Math.floor(Math.random() * 10); i++) {
+  todos.push({
+    title: "Go to gym",
+    description: "Go to gym form 5",
+    id: i + 1
+  })
+}
+
+createDomElements(todos);

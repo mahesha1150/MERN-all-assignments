@@ -12,7 +12,7 @@ let COURSES = [];
 
 function generateJwt(user){
   const payload = { username: user.username };
-  return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
+  return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET);
 }
 
 const authenticateJwt = (req, res, next) => {
@@ -36,10 +36,13 @@ app.post('/admin/signup', (req, res) => {// logic to sign up admin
   let adminCheck = checkUser(ADMINS, admin.username);
   
   if(adminCheck === undefined){
-    ADMINS.push(admin);
+    ADMINS.push({
+      username: admin.username,
+      password: admin.password
+    });
     
-    const accessToken = generateJwt(admin);
-    return res.status(201).json({ message: 'Admin created successfully', accessToken });
+    const token = generateJwt(admin);
+    return res.status(201).json({ message: 'Admin created successfully', token });
   }
   res.status(400).json({ message: "Admin's username provied is already registered" });
 });
@@ -51,8 +54,8 @@ app.post('/admin/login', (req, res) => {// logic to log in admin
   let admin = authenticateUser(ADMINS, adminHeaders.username, adminHeaders.password);
 
   if(admin !== undefined){
-    const accessToken = generateJwt(admin);
-    return res.json({ message: 'Logged in successfully', accessToken });
+    const token = generateJwt(admin);
+    return res.json({ message: 'Logged in successfully', token });
   }
 
   res.status(401).json({ message: 'Invalid Admin Credentials' });
@@ -64,8 +67,8 @@ app.post('/admin/courses', authenticateJwt, (req, res) => {// logic to create a 
     let courseCheck = findCourseWithTitle(newCourse);
   
     if(courseCheck === -1){
-      //newCourse.id = COURSES.length+1;
-      COURSES.push({ ...newCourse, id: COURSES.length+1 });
+      newCourse.id = COURSES.length+1;
+      COURSES.push(newCourse);
 
       return res.status(201).json({ message: 'Course created successfully', courseId: newCourse.id });
     }else{
@@ -75,22 +78,25 @@ app.post('/admin/courses', authenticateJwt, (req, res) => {// logic to create a 
 });
 
 app.put('/admin/courses/:courseId', authenticateJwt, (req, res) => {// logic to edit a course
-    let courseId = req.params.courseId;
-  
-    let courseIndex = findCourse(courseId);
-   
-    if(courseIndex !== -1){      
-      let course = COURSES[courseIndex];
-      Object.assign(course, req.body);
+  let courseId = req.params.courseId
+  let updatedCourseDetails = req.body;
 
-      return res.json({ message: 'Course updated successfully' })
-    }else{
-      return res.status(400).json({ message: 'Course with the course Id does not exist' });
+  let courseIndex = findCourse(courseId);
+ 
+  if(courseIndex !== -1){      
+    let course = COURSES[courseIndex];
+    for(key in course){
+      if(key !== 'id')//Request Body does not Have ID
+        course[key] = updatedCourseDetails[key];
     }
+    return res.json({ message: 'Course updated successfully' })
+  }else{
+    return res.status(400).json({ message: 'Course with the course Id does not exist' });
+  }
 });
 
-app.get('/admin/courses', authenticateJwt, (req, res) => {// logic to get all courses
-    return res.json({ courses: COURSES});
+app.get('/admin/courses', (req, res) => {// logic to get all courses
+  return res.json({ courses: COURSES});
 });
 
 // User routes
@@ -99,10 +105,13 @@ app.post('/users/signup', (req, res) => {// logic to sign up user
   let userCheck = checkUser(USERS, user.username);
   
   if(userCheck === undefined){
-    USERS.push(user);
-
-    const token = generateJwt(user);
-    return res.status(201).json({ message: 'User created successfully', token });
+    USERS.push({
+      username: user.username,
+      password: user.password
+      //purchasedCourses: []
+    });
+  
+    return res.status(201).json({ message: 'User created successfully' });
   }
   
   res.status(400).json({ message: "User's username provied is already registered" });
@@ -112,56 +121,26 @@ app.post('/users/login', (req, res) => {// logic to log in user
   let userHeaders = req.headers;
 
   let user = authenticateUser(USERS, userHeaders.username, userHeaders.password);
-  if(user !== undefined){
-    const token = generateJwt(user);
-    return res.json({ message: 'Logged in successfully', token });
-  }
+  if(user !== undefined)
+      return res.json({ message: 'Logged in successfully' });
 
   res.status(401).json({ message: 'Invalid User Credentials'});
 });
 
-app.get('/users/courses', authenticateJwt, (req, res) => {// logic to list all courses
-    return res.json({ courses: COURSES.filter(course => course.published)});
+app.get('/users/courses', (req, res) => {
+  // logic to list all courses
 });
 
-app.post('/users/courses/:courseId', authenticateJwt, (req, res) => {// logic to purchase a course
-  let courseId = parseInt(req.params.courseId);
-  let courseIndex = COURSES.findIndex(course => (course.id === courseId && course.published));
-
-  if(courseIndex !== -1) {
-    let user = USERS.find(value => value.username === req.user.username);
-
-    if(user){
-      if(!user.purchasedCourses)
-        user.purchasedCourses = [];
-  
-      let usersPurchasedCoursesCheck = user.purchasedCourses.findIndex(course => course.id === courseId);
-      if (usersPurchasedCoursesCheck === -1) {
-        user.purchasedCourses.push(COURSES[courseIndex]);
-        return res.json({ message: 'Course purchased successfully' });
-      } else {
-        return res.status(400).json({ message: 'This Course is already purchased' });
-      }
-    }else{
-      return res.status(403).json({ message: 'User not Found' });
-    }
-  }else{
-    return res.status(404).send({ message: 'Course with the course Id does not exist to Purchase' });
-  }
-  
+app.post('/users/courses/:courseId', (req, res) => {
+  // logic to purchase a course
 });
 
-app.get('/users/purchasedCourses', authenticateJwt, (req, res) => {
-  let user = USERS.find(value => value.username === req.user.username);
-  if(user && user.purchasedCourses){
-    return res.json({ purchasedCourses: user.purchasedCourses });
-  }else{
-    return res.status(404).json({ purchasedCourses: "No Purchased Courses" });
-  }
+app.get('/users/purchasedCourses', (req, res) => {
+  // logic to view purchased courses
 });
 
-app.listen(3000, () => {
-  console.log('Server is listening on port 3000');
+app.listen(4000, () => {
+  console.log('Server is listening on port 4000');
 });
 
 

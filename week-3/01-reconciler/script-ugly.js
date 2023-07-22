@@ -31,7 +31,7 @@ function createDomElements(data) {
     console.log(added);
   }
   
-  window.setInterval(() => {
+  /* window.setInterval(() => {
     let todos = [];
     for (let i = 0; i<Math.floor(Math.random() * 100); i++) {
       todos.push({
@@ -42,5 +42,5 @@ function createDomElements(data) {
     }
   
     createDomElements(todos)
-  }, 5000)
+  }, 5000) */
   

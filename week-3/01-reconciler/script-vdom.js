@@ -58,16 +58,22 @@ function createDomElements() {
 
 
 function updateVirtualDom(data) {
-    vDOM = data.map(item => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description
-        };
-      });
-    createDomElements(vDOM);
+  /* vDOM = data.map(item => ({
+    id: item.id,
+    title: item.title,
+    description: item.description
+  })); */
+
+  vDOM = data.map(item => {
+    return {
+      id: item.id,
+      title: item.title,
+      description: item.description
+    };
+  });
+  createDomElements(vDOM);
 }
-window.setInterval(() => {
+/* window.setInterval(() => {
   let todos = [];
   for (let i = 0; i<Math.floor(Math.random() * 100); i++) {
     todos.push({
@@ -78,6 +84,6 @@ window.setInterval(() => {
   }
 
   updateVirtualDom(todos);
-}, 5000);
+}, 5000); */
 
 
