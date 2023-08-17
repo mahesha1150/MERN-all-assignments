@@ -21,10 +21,9 @@ const router = express.Router();
         return res.status(201).json({ message: 'Admin created successfully', accessToken });
     }
 
-});
+}); */
 
-
-router.post('/login', async (req, res) => {// logic to log in admin
+/* router.post('/login', async (req, res) => {// logic to log in admin
     let { username, password } = req.headers;
 
     let admin = await Admin.findOne({ username, password });
@@ -78,29 +77,36 @@ router.put('/courses/:courseId', authenticateUserJwt, async (req, res) => {// lo
 });
 
 router.get('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to get a course
-    let course = await Course.findById(req.params.courseId);
+    if (req.user.userrole === "admin") {
+        let course = await Course.findById(req.params.courseId);
 
-    if (course) {
-        return res.json({ course });
+        if (course) {
+            return res.json({ course });
+        } else {
+            return res.status(404).json({ message: 'Course ID does not Exist' })
+        }
     } else {
-        return res.status(404).json({ message: 'Course ID does not Exist' })
+        return res.status(403).json({ message: 'User does not have Admin Permissions' })
     }
 
 });
 
-router.delete('/courses/:courseId', authenticateUserJwt, async (req, res) => {
-    let course;
-    try {
-        course = await Course.findByIdAndRemove(req.params.courseId);
-    } catch (err) {
-        console.error('Error deleting course:', err);
-    }
-    if (course) {
-        return res.json({ message: "Course deleted successfully!", course });
+router.delete('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to delete a course
+    if (req.user.userrole === "admin") {
+        let course;
+        try {
+            course = await Course.findByIdAndRemove(req.params.courseId);
+        } catch (err) {
+            console.error('Error deleting course:', err);
+        }
+        if (course) {
+            return res.json({ message: "Course deleted successfully!", course });
+        } else {
+            return res.status(404).json({ message: "Error in deletion!" })
+        }
     } else {
-        return res.status(404).json({ message: "Error in deletion!" })
+        return res.status(403).json({ message: 'User does not have Admin Permissions' })
     }
-
 })
 
 /* router.get('/courses', authenticateAdminJwt, async (req, res) => {// logic to get all courses

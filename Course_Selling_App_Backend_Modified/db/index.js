@@ -21,14 +21,21 @@ const courseSchema = new mongoose.Schema({
     published: Boolean
 });
 
+const purchasedCoursesSchema = new mongoose.Schema({
+    username: String,
+    purchasedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
+})
+
 
 //Define mongoose models
 const Admin = mongoose.model('Admin', adminSchema);
 const User = mongoose.model('User', userSchema);
 const Course = mongoose.model('Course', courseSchema);
+const PurchasedCourses = mongoose.model('PurchasedCourses', purchasedCoursesSchema);
 
 module.exports = {
     Admin,
     User,
-    Course
+    Course,
+    PurchasedCourses
   }

@@ -1,5 +1,5 @@
 const express = require('express');
-const { User, Course } = require("../db");
+const { User, Course, PurchasedCourses } = require("../db");
 const jwt = require('jsonwebtoken');
 //const { SECRET } = require("../middleware/auth")
 const { authenticateUserJwt } = require("../middleware/auth");
@@ -38,33 +38,25 @@ router.get('/profile', authenticateUserJwt, async (req, res) => {// logic to get
     return res.json({ username: req.user.username, userrole: req.user.userrole });
 });
 
-router.post('/courses', authenticateUserJwt, async (req, res) => {// logic to create a course
-    let { title } = req.body;
-    //let courseCheck = await Course.findOne({ title: req.body.title });
-    let courseCheck = await Course.findOne({ title });
-
-    if (courseCheck) {
-        return res.status(400).json({ message: 'Course with this title is already added' })
-    } else {
-        const course = new Course(req.body);
-        await course.save();
-
-        return res.status(201).json({ message: 'Course created successfully', courseId: course.id });
-    }
-});
-
 router.get('/courses', authenticateUserJwt, async (req, res) => {// logic to list all courses
     let courses = null;
-    if(req.user.userrole === "admin"){ //Admin List all the courses
+    if (req.user.userrole === "admin") { //Admin List all the courses
         courses = await Course.find({});
-    }else{
+    } else {
         courses = await Course.find({ published: true }); //Users list only Published Courses
-    }
+        let purchasedCourses = await PurchasedCourses.find({ username: req.user.username });
+        courses = courses.map(course => {
+            const isPurchased = purchasedCourses.some(purchasedCourse =>
+                purchasedCourse.purchasedCourses.includes(course._id)
+            );
 
+            return { ...course.toObject(), purchasedCourseCheck: isPurchased };
+        });
+    }
     return res.json({ courses: courses });
 });
 
-router.get('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to get a course
+/* router.get('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to get a course
     let course = await Course.findById(req.params.courseId);
 
     if (course) {
@@ -73,51 +65,58 @@ router.get('/courses/:courseId', authenticateUserJwt, async (req, res) => {// lo
         return res.status(404).json({ message: 'Course ID does not Exist' })
     }
 
-});
-
-router.put('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to edit a course
-    try {
-        let course = await Course.findByIdAndUpdate(req.params.courseId, req.body, { new: true });
-        if (course) {
-            return res.json({ message: 'Course updated successfully' });
-        } else {
-            return res.status(400).json({ message: 'Course with the course Id does not exist' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({ message: "Error Updating" });
-    }
-});
+}); */
 
 router.post('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to purchase a course
     let course = await Course.findOne({ _id: req.params.courseId, published: true });
-    if (course) {
-        let user = await User.findOne({ username: req.user.username });
-        if (user) {
-            let usersPurchasedCoursesCheck = user.purchasedCourses.includes(req.params.courseId);
-            if (usersPurchasedCoursesCheck) {
-                return res.status(400).json({ message: 'This Course is already purchased' });
+    try {
+        if (course) {
+            let user = await User.findOne({ username: req.user.username });
+            if (user) {
+                let userPurchasedCourses = await PurchasedCourses.findOne({ username: req.user.username });
+                if (!userPurchasedCourses) {
+                    const newPurchasedCoursesUser = new PurchasedCourses({ username: req.user.username, purchasedCourses: course });
+                    await newPurchasedCoursesUser.save();
+                } else {
+                    let usersPurchasedCoursesCheck = userPurchasedCourses.purchasedCourses.includes(req.params.courseId);
+                    if (usersPurchasedCoursesCheck) {
+                        return res.status(400).json({ message: 'This Course is already purchased' });
+                    }
+                    userPurchasedCourses.purchasedCourses.push(course)
+                    await userPurchasedCourses.save();
+                }
+                return res.json({ message: 'Course purchased successfully', courseId: req.params.courseId });
+                
+                /* let usersPurchasedCoursesCheck = user.purchasedCourses.includes(req.params.courseId);
+                if (usersPurchasedCoursesCheck) {
+                    return res.status(400).json({ message: 'This Course is already purchased' });
+                } else {
+                    user.purchasedCourses.push(course);
+                    await user.save();
+                    return res.json({ message: 'Course purchased successfully', courseId: req.params.courseId });
+                } */
             } else {
-                user.purchasedCourses.push(course);
-                await user.save();
-                return res.json({ message: 'Course purchased successfully' });
-
+                return res.status(403).json({ message: 'User not Found' });
             }
         } else {
-            return res.status(403).json({ message: 'User not Found' });
+            return res.status(404).send({ message: 'Course with the course Id does not exist to Purchase or it is not yet published' });
         }
-    } else {
-        return res.status(404).send({ message: 'Course with the course Id does not exist to Purchase or it is not yet published' });
+    } catch (err) {
+        console.error('Error Purchasing course:', err);
     }
 
 });
 
 router.get('/purchasedCourses', authenticateUserJwt, async (req, res) => {
-    let user = await User.findOne({ username: req.user.username }).populate('purchasedCourses');
+    let user = await PurchasedCourses.findOne({ username: req.user.username }).populate('purchasedCourses');
     if (user && user.purchasedCourses) {
-        return res.json({ purchasedCourses: user.purchasedCourses });
+        const purchasedCourses = user.purchasedCourses.map(course => ({
+            ...course.toObject(),
+            purchasedCourseCheck: true
+          }));
+        return res.json({ purchasedCourses });
     } else {
-        return res.status(404).json({ purchasedCourses: "No Purchased Courses" });
+        return res.status(404).json({});
     }
 });
 
