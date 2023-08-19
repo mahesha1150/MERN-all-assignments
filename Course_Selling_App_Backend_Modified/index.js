@@ -3,8 +3,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const adminRouter = require("./routes/admin");
 const userRouter = require("./routes/user");
+const bodyParser = require('body-parser');
 
 const app = express();
+
+// Increase payload limit (e.g., 10MB)
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+
 
 /* app.use(cors({
   credentials: true,

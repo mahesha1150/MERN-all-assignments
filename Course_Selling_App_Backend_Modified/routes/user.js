@@ -8,14 +8,14 @@ const router = express.Router();
 
 // User routes
 router.post('/signup', async (req, res) => {// logic to sign up user
-    let { username, password } = req.body;
+    let { fullname, username, password, userimage } = req.body;
     let userCheck = await User.findOne({ username });
 
     if (userCheck) {
-        res.status(400).json({ message: "User's username provied is already registered" });
+        res.status(400).json({ message: "User's email provied is already registered" });
     } else {
         const userrole = "user";
-        const user = new User({ username, password, userrole });
+        const user = new User({fullname, username, password, userrole, userimage });
         await user.save();
 
         const accessToken = jwt.sign({ username, userrole: 'user' }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
@@ -28,14 +28,14 @@ router.post('/login', async (req, res) => {// logic to log in user
 
     let user = await User.findOne({ username, password });
     if (user) {
-        const accessToken = jwt.sign({ username, userrole: user.userrole }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
-        return res.json({ message: 'Logged in successfully', accessToken, userrole: user.userrole });
+        const accessToken = jwt.sign({fullname: user.fullname, username, userrole: user.userrole }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
+        return res.json({ message: 'Logged in successfully', accessToken, userrole: user.userrole, userimage: user.userimage });
     }
     res.status(401).json({ message: 'Invalid User Credentials' });
 });
 
 router.get('/profile', authenticateUserJwt, async (req, res) => {// logic to get User Profile details
-    return res.json({ username: req.user.username, userrole: req.user.userrole });
+    return res.json({ fullname: req.user.fullname, username: req.user.username, userrole: req.user.userrole });
 });
 
 router.get('/courses', authenticateUserJwt, async (req, res) => {// logic to list all courses

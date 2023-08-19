@@ -46,7 +46,7 @@ router.post('/courses', authenticateUserJwt, async (req, res) => {// logic to cr
         let courseCheck = await Course.findOne({ title });
 
         if (courseCheck) {
-            return res.status(400).json({ message: 'Course with this title is already added' })
+            return res.status(400).json({ message: `Course with the Title: ${title} is already added` })
         } else {
             const course = new Course(req.body);
             await course.save();
