@@ -76,6 +76,11 @@ router.put('/courses/:courseId', authenticateUserJwt, async (req, res) => {// lo
     }
 });
 
+router.get('/courses', authenticateUserJwt, async (req, res) => {// logic to get all courses
+    const courses = await Course.find({});
+    return res.json({ courses: courses });
+});
+
 router.get('/courses/:courseId', authenticateUserJwt, async (req, res) => {// logic to get a course
     if (req.user.userrole === "admin") {
         let course = await Course.findById(req.params.courseId);
@@ -108,13 +113,6 @@ router.delete('/courses/:courseId', authenticateUserJwt, async (req, res) => {//
         return res.status(403).json({ message: 'User does not have Admin Permissions' })
     }
 })
-
-/* router.get('/courses', authenticateAdminJwt, async (req, res) => {// logic to get all courses
-
-    const courses = await Course.find({});
-    return res.json({ courses: courses });
-}); */
-
 
 
 module.exports = router

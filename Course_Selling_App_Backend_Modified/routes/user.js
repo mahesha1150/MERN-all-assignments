@@ -15,7 +15,7 @@ router.post('/signup', async (req, res) => {// logic to sign up user
         res.status(400).json({ message: "User's email provied is already registered" });
     } else {
         const userrole = "user";
-        const user = new User({fullname, username, password, userrole, userimage });
+        const user = new User({ fullname, username, password, userrole, userimage });
         await user.save();
 
         const accessToken = jwt.sign({ username, userrole: 'user' }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
@@ -28,7 +28,7 @@ router.post('/login', async (req, res) => {// logic to log in user
 
     let user = await User.findOne({ username, password });
     if (user) {
-        const accessToken = jwt.sign({fullname: user.fullname, username, userrole: user.userrole }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
+        const accessToken = jwt.sign({ fullname: user.fullname, username, userrole: user.userrole }, process.env.USER_ACCESS_TOKEN_SECRET, { expiresIn: '30m' });
         return res.json({ message: 'Logged in successfully', accessToken, userrole: user.userrole, userimage: user.userimage });
     }
     res.status(401).json({ message: 'Invalid User Credentials' });
@@ -38,21 +38,16 @@ router.get('/profile', authenticateUserJwt, async (req, res) => {// logic to get
     return res.json({ fullname: req.user.fullname, username: req.user.username, userrole: req.user.userrole });
 });
 
-router.get('/courses', authenticateUserJwt, async (req, res) => {// logic to list all courses
-    let courses = null;
-    if (req.user.userrole === "admin") { //Admin List all the courses
-        courses = await Course.find({});
-    } else {
-        courses = await Course.find({ published: true }); //Users list only Published Courses
-        let purchasedCourses = await PurchasedCourses.find({ username: req.user.username });
-        courses = courses.map(course => {
-            const isPurchased = purchasedCourses.some(purchasedCourse =>
-                purchasedCourse.purchasedCourses.includes(course._id)
-            );
+router.get('/courses', authenticateUserJwt, async (req, res) => {// logic to list all courses which are published
+    let courses = await Course.find({ published: true }); //Users list only Published Courses
+    let purchasedCourses = await PurchasedCourses.find({ username: req.user.username });
+    courses = courses.map(course => {
+        const isPurchased = purchasedCourses.some(purchasedCourse =>
+            purchasedCourse.purchasedCourses.includes(course._id)
+        );
 
-            return { ...course.toObject(), purchasedCourseCheck: isPurchased };
-        });
-    }
+        return { ...course.toObject(), purchasedCourseCheck: isPurchased };
+    });
     return res.json({ courses: courses });
 });
 
@@ -86,7 +81,7 @@ router.post('/courses/:courseId', authenticateUserJwt, async (req, res) => {// l
                     await userPurchasedCourses.save();
                 }
                 return res.json({ message: 'Course purchased successfully', courseId: req.params.courseId });
-                
+
                 /* let usersPurchasedCoursesCheck = user.purchasedCourses.includes(req.params.courseId);
                 if (usersPurchasedCoursesCheck) {
                     return res.status(400).json({ message: 'This Course is already purchased' });
@@ -107,13 +102,13 @@ router.post('/courses/:courseId', authenticateUserJwt, async (req, res) => {// l
 
 });
 
-router.get('/purchasedCourses', authenticateUserJwt, async (req, res) => {
+router.get('/purchasedCourses', authenticateUserJwt, async (req, res) => {// logic to list all purchased courses
     let user = await PurchasedCourses.findOne({ username: req.user.username }).populate('purchasedCourses');
     if (user && user.purchasedCourses) {
         const purchasedCourses = user.purchasedCourses.map(course => ({
             ...course.toObject(),
             purchasedCourseCheck: true
-          }));
+        }));
         return res.json({ purchasedCourses });
     } else {
         return res.status(404).json({});
